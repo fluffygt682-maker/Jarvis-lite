@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jarvis</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #0a0e1a;
+    color: #e8ecf5;
+    font-family: -apple-system, Roboto, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    text-align: center;
+  }
+  h1 { font-size: 22px; letter-spacing: 2px; color: #4fd1ff; margin-bottom: 4px; }
+  .sub { color: #6b7590; font-size: 13px; margin-bottom: 30px; }
+  #orb {
+    width: 140px; height: 140px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #4fd1ff, #1a3a5c 70%);
+    box-shadow: 0 0 40px rgba(79,209,255,0.4);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    user-select: none;
+  }
+  #orb.listening {
+    box-shadow: 0 0 70px rgba(79,209,255,0.9);
+    transform: scale(1.05);
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { transform: scale(1.05); }
+    50% { transform: scale(1.12); }
+  }
+  #orb span { font-size: 34px; }
+  #status { margin-top: 24px; min-height: 20px; color: #9aa4bf; font-size: 14px; }
+  #log {
+    margin-top: 20px; width: 100%; max-width: 480px;
+    text-align: left; font-size: 14px; line-height: 1.5;
+    max-height: 45vh; overflow-y: auto;
+  }
+  .you { color: #6b7590; margin-top: 10px; }
+  .jarvis { color: #cfe9ff; margin-top: 4px; }
+</style>
+</head>
+<body>
+  <h1>J.A.R.V.I.S.</h1>
+  <div class="sub">tap the orb, then speak</div>
+  <div id="orb"><span>🎙️</span></div>
+  <div id="status">tap to start</div>
+  <div id="log"></div>
+
+<script>
+// ====== CONFIG ======
+// Point this at your deployed backend URL (Vercel), e.g:
+// const BACKEND_URL = "https://your-project.vercel.app/api/chat";
+const BACKEND_URL = "https://jarvis-lite-8futku3hx-fluffygt682-makers-projects.vercel.app/api/chat";
+// =====================
+
+const orb = document.getElementById('orb');
+const statusEl = document.getElementById('status');
+const logEl = document.getElementById('log');
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognizing = false;
+let recognition = null;
+
+if (!SpeechRecognition) {
+  statusEl.textContent = "This browser doesn't support voice recognition. Try Chrome.";
+} else {
+  recognition = new SpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    recognizing = true;
+    orb.classList.add('listening');
+    statusEl.textContent = "listening...";
+  };
+
+  recognition.onerror = (e) => {
+    statusEl.textContent = "error: " + e.error;
+    orb.classList.remove('listening');
+    recognizing = false;
+  };
+
+  recognition.onend = () => {
+    recognizing = false;
+    orb.classList.remove('listening');
+  };
+
+  recognition.onresult = async (event) => {
+    const text = event.results[0][0].transcript;
+    addLine('you', text);
+    statusEl.textContent = "thinking...";
+    try {
+      const reply = await askJarvis(text);
+      addLine('jarvis', reply);
+      speak(reply);
+    } catch (err) {
+      statusEl.textContent = "backend error — check BACKEND_URL is set correctly";
+      console.error(err);
+    }
+  };
+}
+
+orb.addEventListener('click', () => {
+  if (!recognition) return;
+  if (recognizing) {
+    recognition.stop();
+  } else {
+    logEl.scrollTop = logEl.scrollHeight;
+    recognition.start();
+  }
+});
+
+function addLine(who, text) {
+  const div = document.createElement('div');
+  div.className = who;
+  div.textContent = (who === 'you' ? 'You: ' : 'Jarvis: ') + text;
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+async function askJarvis(message) {
+  const res = await fetch(BACKEND_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message })
+  });
+  if (!res.ok) throw new Error('Backend returned ' + res.status);
+  const data = await res.json();
+  return data.reply;
+}
+
+function speak(text) {
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1.0;
+  utter.onstart = () => statusEl.textContent = "speaking...";
+  utter.onend = () => statusEl.textContent = "tap to start";
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utter);
+}
+</script>
+</body>
+</html>
