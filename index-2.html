@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jarvis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05070d;
+    --text: #e8ecf5;
+    --muted: #5b6580;
+    --accent: #4f9dff;
+    --accent2: #8b6dff;
+    --card-bg: rgba(255,255,255,0.04);
+    --card-border: rgba(139,109,255,0.18);
+    --you-bg1: #1c3a63;
+    --you-bg2: #16294a;
+    --you-text: #cfe0ff;
+    --star-opacity: 0.5;
+    --aurora-opacity: 0.16;
+  }
+  html[data-theme="light"] {
+    --bg: #eef1f8;
+    --text: #1b2333;
+    --muted: #6b7690;
+    --accent: #2f6fed;
+    --accent2: #6d4fe0;
+    --card-bg: rgba(40,60,120,0.05);
+    --card-border: rgba(70,90,180,0.18);
+    --you-bg1: #dbe6ff;
+    --you-bg2: #cddcff;
+    --you-text: #1b3a75;
+    --star-opacity: 0.35;
+    --aurora-opacity: 0.10;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, Roboto, Arial, sans-serif;
+    overflow-x: hidden;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 20px 20px;
+    position: relative;
+  }
+
+  #stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: var(--star-opacity); }
+
+  body::before {
+    content: "";
+    position: fixed;
+    top: -30%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140vw;
+    height: 60vh;
+    background: radial-gradient(ellipse at center, rgba(79,157,255,var(--aurora-opacity)), rgba(124,92,255,0.08) 40%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .content { position: relative; z-index: 1; width: 100%; max-width: 480px; display: flex; flex-direction: column; align-items: center; }
+
+  .topbar { display: flex; align-items: center; justify-content: center; gap: 8px; position: relative; width: 100%; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+  .brand-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px 2px rgba(79,157,255,0.8);
+  }
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 5px;
+    margin: 0;
+    background: linear-gradient(90deg, var(--accent), #a6c8ff 40%, var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .icon-btn {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .sub-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; margin-bottom: 36px; }
+  .sub { color: var(--muted); font-size: 12.5px; letter-spacing: 0.3px; font-family: 'Inter', sans-serif; }
+  #clearBtn {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 3px 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  #clearBtn:active { background: rgba(139,109,255,0.15); color: var(--accent); }
+
+  .orb-wrap { position: relative; width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+  .ring { position: absolute; border-radius: 50%; border: 1px solid rgba(99,155,255,0.18); inset: 0; }
+  .ring.r2 { inset: -20px; border-color: rgba(99,155,255,0.10); }
+  .ring.r3 { inset: -42px; border-color: rgba(99,155,255,0.06); }
+  .orb-wrap.listening .ring, .orb-wrap.speaking .ring { animation: ringPulse 2.2s ease-out infinite; }
+  .orb-wrap.listening .ring.r2, .orb-wrap.speaking .ring.r2 { animation-delay: 0.3s; }
+  .orb-wrap.listening .ring.r3, .orb-wrap.speaking .ring.r3 { animation-delay: 0.6s; }
+  @keyframes ringPulse {
+    0% { transform: scale(0.94); opacity: 0.9; }
+    70% { transform: scale(1.12); opacity: 0; }
+    100% { transform: scale(1.12); opacity: 0; }
+  }
+
+  #orb {
+    position: relative;
+    width: 134px; height: 134px; border-radius: 50%;
+    cursor: pointer;
+    user-select: none;
+    background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.9), rgba(120,190,255,0.5) 16%, rgba(60,120,255,0.35) 38%, rgba(15,20,40,0.9) 72%);
+    box-shadow: 0 0 50px rgba(79,157,255,0.35), inset 0 0 30px rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center;
+    transition: box-shadow 0.3s ease, transform 0.2s ease;
+  }
+  #orb:active { transform: scale(0.97); }
+  .orb-wrap.listening #orb { box-shadow: 0 0 80px rgba(79,157,255,0.65), inset 0 0 40px rgba(255,255,255,0.08); }
+  .orb-wrap.speaking #orb { box-shadow: 0 0 80px rgba(139,109,255,0.6), inset 0 0 40px rgba(255,255,255,0.08); }
+
+  canvas#wave { position: absolute; width: 84px; height: 42px; left: 50%; top: 50%; transform: translate(-50%,-50%); pointer-events: none; }
+  #mic-icon { width: 28px; height: 28px; opacity: 0.9; position: relative; z-index: 2; }
+  .orb-wrap.listening #mic-icon, .orb-wrap.speaking #mic-icon { opacity: 0; }
+
+  #status {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted);
+    min-height: 18px;
+    margin-bottom: 22px;
+    transition: color 0.2s ease;
+  }
+  #status.active { color: var(--accent); }
+
+  .input-row {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+    margin-bottom: 22px;
+  }
+  #textInput {
+    flex: 1;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 22px;
+    padding: 11px 16px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    outline: none;
+  }
+  #textInput::placeholder { color: var(--muted); }
+  #sendBtn {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    color: white;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  #sendBtn:active { transform: scale(0.95); }
+
+  #log { width: 100%; display: flex; flex-direction: column; gap: 10px; max-height: 38vh; overflow-y: auto; padding-bottom: 20px; scrollbar-width: thin; }
+  .bubble { max-width: 84%; padding: 11px 15px; border-radius: 16px; font-size: 14.5px; line-height: 1.45; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .bubble.you { align-self: flex-end; background: linear-gradient(135deg, var(--you-bg1), var(--you-bg2)); color: var(--you-text); border-bottom-right-radius: 5px; }
+  .bubble.jarvis { align-self: flex-start; background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text); border-bottom-left-radius: 5px; }
+  .bubble .label { display: block; font-family: 'Space Grotesk', sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.55; margin-bottom: 3px; }
+
+  .thinking-dots { display: inline-flex; gap: 4px; align-items: center; padding: 4px 0; }
+  .thinking-dots span { width: 5px; height: 5px; border-radius: 50%; background: #8b9fc9; animation: dotPulse 1.2s infinite ease-in-out; }
+  .thinking-dots span:nth-child(2) { animation-delay: 0.15s; }
+  .thinking-dots span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes dotPulse { 0%, 60%, 100% { opacity: 0.25; transform: scale(0.85); } 30% { opacity: 1; transform: scale(1); } }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: rgba(139,109,255,0.3); border-radius: 4px; }
+</style>
+</head>
+<body>
+  <canvas id="stars"></canvas>
+
+  <div class="content">
+    <div class="topbar">
+      <div class="brand"><span class="brand-dot"></span><h1>J&nbsp;A&nbsp;R&nbsp;V&nbsp;I&nbsp;S</h1></div>
+      <button class="icon-btn" id="themeBtn" title="toggle theme">&#9788;</button>
+    </div>
+    <div class="sub-row">
+      <div class="sub">tap the orb &middot; speak &middot; listen</div>
+      <button id="clearBtn" title="forget everything">clear</button>
+    </div>
+
+    <div class="orb-wrap" id="orbWrap">
+      <div class="ring r1"></div>
+      <div class="ring r2"></div>
+      <div class="ring r3"></div>
+      <div id="orb">
+        <canvas id="wave" width="84" height="42"></canvas>
+        <svg id="mic-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.6">
+          <rect x="9" y="2" width="6" height="12" rx="3"/>
+          <path d="M5 11a7 7 0 0 0 14 0"/>
+          <path d="M12 18v3"/>
+          <path d="M8 21h8"/>
+        </svg>
+      </div>
+    </div>
+
+    <div id="status">tap to start</div>
+
+    <div class="input-row">
+      <input id="textInput" type="text" placeholder="or type here..." autocomplete="off">
+      <button id="sendBtn">&#10148;</button>
+    </div>
+
+    <div id="log"></div>
+  </div>
+
+<script>
+// ====== CONFIG ======
+const BACKEND_URL = "https://jarvis-lite-pied.vercel.app/api/chat";
+const TTS_URL = "https://jarvis-lite-pied.vercel.app/api/tts";
+// =====================
+
+const orbWrap = document.getElementById('orbWrap');
+const orb = document.getElementById('orb');
+const statusEl = document.getElementById('status');
+const logEl = document.getElementById('log');
+const waveCanvas = document.getElementById('wave');
+const waveCtx = waveCanvas.getContext('2d');
+const textInput = document.getElementById('textInput');
+const sendBtn = document.getElementById('sendBtn');
+const themeBtn = document.getElementById('themeBtn');
+
+let conversation = [];
+const STORAGE_KEY = 'jarvis_conversation_v1';
+const THEME_KEY = 'jarvis_theme';
+
+/* ---------- theme ---------- */
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  themeBtn.innerHTML = theme === 'light' ? '&#9789;' : '&#9788;';
+}
+(function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY) || 'dark';
+  applyTheme(saved);
+})();
+themeBtn.addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'light' ? 'dark' : 'light';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+});
+
+/* ---------- persistence ---------- */
+function loadConversation() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      conversation = JSON.parse(saved);
+      conversation.forEach(m => addLine(m.role === 'user' ? 'you' : 'jarvis', m.content, false));
+    }
+  } catch (e) {
+    console.warn('could not load saved conversation', e);
+    conversation = [];
+  }
+}
+function saveConversation() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(conversation)); }
+  catch (e) { console.warn('could not save conversation', e); }
+}
+document.getElementById('clearBtn').addEventListener('click', () => {
+  conversation = [];
+  localStorage.removeItem(STORAGE_KEY);
+  logEl.innerHTML = '';
+  statusEl.textContent = "memory cleared";
+  setTimeout(() => { if (!recognizing) statusEl.textContent = "tap to start"; }, 1500);
+});
+
+/* ---------- ambient starfield ---------- */
+(function stars() {
+  const c = document.getElementById('stars');
+  const ctx = c.getContext('2d');
+  function size() { c.width = window.innerWidth; c.height = window.innerHeight; }
+  size();
+  window.addEventListener('resize', size);
+  const pts = Array.from({length: 60}, () => ({
+    x: Math.random() * c.width, y: Math.random() * c.height,
+    r: Math.random() * 1.2 + 0.2, a: Math.random() * 0.5 + 0.15
+  }));
+  function draw() {
+    ctx.clearRect(0, 0, c.width, c.height);
+    for (const p of pts) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(120,150,220,${p.a})`;
+      ctx.fill();
+    }
+  }
+  draw();
+})();
+
+/* ---------- mic waveform ---------- */
+let audioCtx, analyser, dataArray, rafId, mediaStream;
+async function startWave() {
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaStreamSource(mediaStream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 64;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+    source.connect(analyser);
+    drawWave();
+  } catch (e) { console.warn('mic waveform unavailable', e); }
+}
+function drawWave() {
+  rafId = requestAnimationFrame(drawWave);
+  if (!analyser) return;
+  analyser.getByteFrequencyData(dataArray);
+  const w = waveCanvas.width, h = waveCanvas.height;
+  waveCtx.clearRect(0, 0, w, h);
+  const bars = 14;
+  const step = Math.floor(dataArray.length / bars);
+  const barW = w / bars;
+  for (let i = 0; i < bars; i++) {
+    const v = dataArray[i * step] / 255;
+    const barH = Math.max(2, v * h);
+    waveCtx.fillStyle = 'rgba(255,255,255,0.85)';
+    roundRect(waveCtx, i * barW + barW * 0.25, (h - barH) / 2, barW * 0.5, barH, 2);
+  }
+}
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  ctx.fill();
+}
+function stopWave() {
+  if (rafId) cancelAnimationFrame(rafId);
+  waveCtx.clearRect(0, 0, waveCanvas.width, waveCanvas.height);
+  if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+  if (audioCtx) audioCtx.close();
+  analyser = null;
+}
+
+/* ---------- shared message pipeline (voice + typed) ---------- */
+async function handleUserMessage(text) {
+  if (!text || !text.trim()) return;
+  addLine('you', text);
+  const thinkingEl = addThinking();
+  conversation.push({ role: 'user', content: text });
+  saveConversation();
+  try {
+    const reply = await askJarvis(conversation);
+    thinkingEl.remove();
+    conversation.push({ role: 'assistant', content: reply });
+    saveConversation();
+    addLine('jarvis', reply);
+    speak(reply);
+  } catch (err) {
+    thinkingEl.remove();
+    statusEl.textContent = "backend error — check BACKEND_URL";
+    statusEl.classList.remove('active');
+    console.error(err);
+  }
+}
+
+/* ---------- speech recognition ---------- */
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognizing = false;
+let recognition = null;
+
+if (!SpeechRecognition) {
+  statusEl.textContent = "voice not supported — type instead";
+} else {
+  recognition = new SpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    recognizing = true;
+    orbWrap.classList.add('listening');
+    statusEl.textContent = "listening";
+    statusEl.classList.add('active');
+    startWave();
+  };
+  recognition.onerror = (e) => {
+    statusEl.textContent = "error: " + e.error;
+    statusEl.classList.remove('active');
+    orbWrap.classList.remove('listening');
+    recognizing = false;
+    stopWave();
+  };
+  recognition.onend = () => {
+    recognizing = false;
+    orbWrap.classList.remove('listening');
+    stopWave();
+  };
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    handleUserMessage(text);
+  };
+}
+
+orb.addEventListener('click', () => {
+  if (!recognition) { textInput.focus(); return; }
+  if (recognizing) {
+    recognition.stop();
+  } else {
+    window.speechSynthesis.cancel();
+    recognition.start();
+  }
+});
+
+/* ---------- typed input ---------- */
+function submitTyped() {
+  const text = textInput.value;
+  if (!text.trim()) return;
+  textInput.value = '';
+  handleUserMessage(text);
+}
+sendBtn.addEventListener('click', submitTyped);
+textInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitTyped(); });
+
+/* ---------- transcript UI ---------- */
+function addLine(who, text, animate = true) {
+  const div = document.createElement('div');
+  div.className = 'bubble ' + who;
+  if (!animate) div.style.animation = 'none';
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = who === 'you' ? 'you' : 'jarvis';
+  div.appendChild(label);
+  div.appendChild(document.createTextNode(text));
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+  return div;
+}
+function addThinking() {
+  const div = document.createElement('div');
+  div.className = 'bubble jarvis';
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = 'jarvis';
+  const dots = document.createElement('div');
+  dots.className = 'thinking-dots';
+  dots.innerHTML = '<span></span><span></span><span></span>';
+  div.appendChild(label);
+  div.appendChild(dots);
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+  statusEl.textContent = "thinking";
+  return div;
+}
+
+/* ---------- backend calls ---------- */
+async function askJarvis(messages) {
+  const res = await fetch(BACKEND_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages })
+  });
+  if (!res.ok) throw new Error('Backend returned ' + res.status);
+  const data = await res.json();
+  return data.reply;
+}
+
+/* ---------- speaking: real TTS with browser-voice fallback ---------- */
+async function speak(text) {
+  orbWrap.classList.add('speaking');
+  statusEl.textContent = "speaking";
+  statusEl.classList.add('active');
+
+  try {
+    const res = await fetch(TTS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (!res.ok) throw new Error('TTS backend error');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => {
+      orbWrap.classList.remove('speaking');
+      statusEl.textContent = "tap to start";
+      statusEl.classList.remove('active');
+      URL.revokeObjectURL(url);
+    };
+    audio.onerror = () => { throw new Error('audio playback failed'); };
+    await audio.play();
+  } catch (e) {
+    console.warn('Falling back to browser voice:', e);
+    speakBrowserVoice(text);
+  }
+}
+
+function speakBrowserVoice(text) {
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1.0;
+  utter.onstart = () => { orbWrap.classList.add('speaking'); statusEl.textContent = "speaking"; statusEl.classList.add('active'); };
+  utter.onend = () => { orbWrap.classList.remove('speaking'); statusEl.textContent = "tap to start"; statusEl.classList.remove('active'); };
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utter);
+}
+
+loadConversation();
+</script>
+</body>
+</html>
